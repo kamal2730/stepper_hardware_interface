@@ -1,0 +1,13 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 100
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    stepper_controller:
+      type: position_controllers/JointPositionController
+
+stepper_controller:
+  ros__parameters:
+    joint: stepper_joint
