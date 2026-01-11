@@ -35,39 +35,59 @@ StepperHardware::on_init(const hardware_interface::HardwareInfo & info)
 std::vector<hardware_interface::StateInterface>
 StepperHardware::export_state_interfaces()
 {
-  return {
-    {info_.joints[0].name, hardware_interface::HW_IF_POSITION, &position_state_}
-  };
+  std::vector<hardware_interface::StateInterface> state_interfaces;
+
+  state_interfaces.emplace_back(
+    info_.joints[0].name,
+    hardware_interface::HW_IF_POSITION,
+    &position_state_);
+
+  return state_interfaces;
 }
+
 
 std::vector<hardware_interface::CommandInterface>
 StepperHardware::export_command_interfaces()
 {
-  return {
-    {info_.joints[0].name, hardware_interface::HW_IF_POSITION, &position_command_}
-  };
+  std::vector<hardware_interface::CommandInterface> command_interfaces;
+
+  command_interfaces.emplace_back(
+    info_.joints[0].name,
+    hardware_interface::HW_IF_POSITION,
+    &position_command_);
+
+  return command_interfaces;
 }
+
 
 hardware_interface::return_type
 StepperHardware::read(const rclcpp::Time &, const rclcpp::Duration &)
 {
   float angle_deg = 0.0f;
 
-  if (!stepper_->getPosition(angle_deg))
-    return hardware_interface::return_type::ERROR;
+  if (stepper_ && stepper_->getPosition(angle_deg))
+  {
+    position_state_ = angle_deg;
+  }
+  // else: keep last value, do NOT fail
 
-  position_state_ = angle_deg;  // radians/deg mapping optional
   return hardware_interface::return_type::OK;
 }
+
 
 hardware_interface::return_type
 StepperHardware::write(const rclcpp::Time &, const rclcpp::Duration &)
 {
-  if (!stepper_->setPosition(static_cast<float>(position_command_)))
-    return hardware_interface::return_type::ERROR;
+  if (stepper_)
+  {
+    float angle_deg = position_command_ * 180.0 / M_PI;
+    stepper_->setPosition(static_cast<float>(angle_deg));
+  }
+  // ignore failure, do NOT kill hardware
 
   return hardware_interface::return_type::OK;
 }
+
 
 }  // namespace stepper_hardware_interface
 
