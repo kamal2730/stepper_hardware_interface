@@ -1,5 +1,6 @@
 #include "stepper_hardware_interface/stepper_hardware.hpp"
 #include <pluginlib/class_list_macros.hpp>
+#include <cmath>
 
 namespace stepper_hardware_interface
 {
@@ -31,6 +32,30 @@ StepperHardware::on_init(const hardware_interface::HardwareInfo & info)
   RCLCPP_INFO(logger_, "Stepper hardware initialized");
   return CallbackReturn::SUCCESS;
 }
+
+
+hardware_interface::CallbackReturn
+StepperHardware::on_activate(const rclcpp_lifecycle::State &)
+{
+  float angle_deg = 0.0f;
+
+  if (stepper_ && stepper_->getPosition(angle_deg))
+  {
+    double angle_rad = angle_deg * M_PI / 180.0;
+
+    position_state_   = angle_rad;
+    position_command_ = angle_rad;
+
+    RCLCPP_INFO(logger_, "Initial position synced: %.2f deg", angle_deg);
+  }
+  else
+  {
+    RCLCPP_WARN(logger_, "Failed to read initial stepper position");
+  }
+
+  return hardware_interface::CallbackReturn::SUCCESS;
+}
+
 
 std::vector<hardware_interface::StateInterface>
 StepperHardware::export_state_interfaces()
@@ -67,12 +92,13 @@ StepperHardware::read(const rclcpp::Time &, const rclcpp::Duration &)
 
   if (stepper_ && stepper_->getPosition(angle_deg))
   {
-    position_state_ = angle_deg;
+    // Continuous DEG -> RAD
+    position_state_ = angle_deg * M_PI / 180.0;
   }
-  // else: keep last value, do NOT fail
 
   return hardware_interface::return_type::OK;
 }
+
 
 
 hardware_interface::return_type
@@ -80,16 +106,20 @@ StepperHardware::write(const rclcpp::Time &, const rclcpp::Duration &)
 {
   if (stepper_)
   {
-    float angle_deg = position_command_ * 180.0 / M_PI;
-    stepper_->setPosition(static_cast<float>(angle_deg));
+    double cmd_rad = position_command_;
+    double cmd_deg = cmd_rad * 180.0 / M_PI;
+     position_command_ = std::clamp(position_command_, 5.0, 355.0);
+
+    stepper_->setPosition(static_cast<float>(cmd_deg));
   }
-  // ignore failure, do NOT kill hardware
 
   return hardware_interface::return_type::OK;
 }
 
 
+
 }  // namespace stepper_hardware_interface
+
 
 PLUGINLIB_EXPORT_CLASS(
   stepper_hardware_interface::StepperHardware,

@@ -16,6 +16,7 @@ joint_state_broadcaster:
 
 stepper_trajectory_controller:
   ros__parameters:
+
     joints:
       - stepper_joint
 
@@ -25,5 +26,17 @@ stepper_trajectory_controller:
     state_interfaces:
       - position
 
+    open_loop_control: false
+
     allow_partial_joints_goal: false
-    open_loop_control: true
+    allow_nonzero_velocity_at_trajectory_end: true
+
+    state_publish_rate: 50.0
+    action_monitor_rate: 20.0
+
+    constraints:
+      stepper_joint:
+        goal: 0.5
+
+      stopped_velocity_tolerance: 0.1
+      goal_time: 0.0
